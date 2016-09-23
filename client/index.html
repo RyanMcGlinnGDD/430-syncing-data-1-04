@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+      #wrapper{
+        width: 800px;
+        height: 500px;
+        background-color: ghostwhite;
+        margin: 0;
+        padding: 0;
+        display: block;
+      }
+      canvas{
+        width: 100%;
+        height: 100%;
+      }
+	</style>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+    <script type="text/babel" >
+      "use strict";
+      let socket;
+
+      let canvas;
+      let ctx;
+      let bufferCanvas;
+      let bufferCtx
+      let userId;
+      //fired when app client starts, initializes socket logic
+      const init = () => {
+        canvas = document.querySelector('canvas');
+        ctx = canvas.getContext('2d');
+        canvas.width = 800;
+        canvas.height = 500;
+        
+        //assign event handlers
+        setupSocket();
+        
+        //join the room
+        let time = new Date().getTime();
+        socket.emit('join', time);
+        
+        bufferSetup();
+      }
+
+      const bufferSetup = () => {
+        bufferCanvas = document.createElement("canvas");
+        bufferCtx = bufferCanvas.getContext("2d");
+        bufferCanvas.height = 200;
+        bufferCanvas.width = 200;
+        
+        ctx.fillRect(100, 100, 200, 200);
+        bufferCtx.fillStyle = 'red';
+        bufferCtx.fillRect(0, 0, 200, 200);
+        
+        const data = {
+          x: 300,
+          y: 300,
+          height: 200,
+          width: 200,
+          imgData: bufferCanvas.toDataURL(),
+        };
+        
+        //draw data
+        socket.emit("draw", data);
+      };
+      
+      const handleMessage = (data) => {
+        let image = new Image();
+        
+        image.onload = () => {
+          ctx.save();
+          ctx.globalCompositeOperation = "source-over";
+          ctx.drawImage(image, data.x, data.y, data.width, data.height);
+          ctx.restore();
+        };
+        image.src = data.imgData;
+      };
+
+      //when socket is connected, adds event handlers
+      const setupSocket = () => {
+        //establish socket connection
+        socket = io.connect();
+        
+        socket.on('serveUserId', (data) => {
+          userId = data;
+          socket.userId = userId;
+        });
+        socket.on('serveDraw', (data) => {
+          handleMessage(data);
+        });
+      };
+
+      
+      
+      window.onload = init;
+    </script>
+</head>
+<body>
+  <div id='wrapper'>
+  <canvas id="interactArea">Use a browser that supports modern web capabilities</canvas>
+  </div>
+</body>
+</html>
